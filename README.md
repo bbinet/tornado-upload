@@ -18,15 +18,16 @@ $ python3 upload.py
 
 ## Upload file using curl
 ```
-$ curl -i -H "Content-Type: image/jpeg" -X POST --data-binary @/tmp/image.jpg "http://localhost:8080/?nodeid=0edd220f399b4e8ebb0e67e59ab1a552&prefix=img_"
+$ curl -i -H "Content-Type: image/jpeg" -X POST --data-binary @/tmp/image.jpg "http://localhost:8080/?nodeid=0edd220f399b4e8ebb0e67e59ab1a552&prefix=img_&subfolder=my_custom_dir"
 
 $ tree tornado/uploaded/
 tornado/uploaded/
 └── 0edd220f399b4e8ebb0e67e59ab1a552
-    └── 2022
-        └── 07
-            └── 29
-                └── img_20220729_101934.jpg
+    └── my_custom_dir
+        └── 2022
+            └── 07
+                └── 29
+                    └── img_20220729_101934.jpg
 ```
 
 ## Docker build
