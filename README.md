@@ -28,6 +28,19 @@ tornado/uploaded/
             └── 29
                 └── img_20220729_101934.jpg
 ```
+#### With an optional subfolder:
+```
+$ curl -i -H "Content-Type: image/jpeg" -X POST --data-binary @/tmp/image.jpg "http://localhost:8080/?nodeid=0edd220f399b4e8ebb0e67e59ab1a552&prefix=img_&subfolder=subfolder1"
+
+$ tree tornado/uploaded/
+tornado/uploaded/
+└── 0edd220f399b4e8ebb0e67e59ab1a552
+    └── subfolder1
+        └── 2022
+            └── 07
+                └── 29
+                    └── img_20220729_101934.jpg
+```
 
 ## Docker build
 
