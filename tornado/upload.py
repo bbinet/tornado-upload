@@ -23,7 +23,7 @@ def normalize_path(path: str) -> str:
                 .encode("ascii", "ignore").decode("ascii")
             ).strip("._")
 
-def is_valid_prefix(s):
+def is_valid_name(s):
     if not isinstance(s, str): return False
     return re.match(r"^[a-z0-9_-]*$", s, re.IGNORECASE) is not None
 
@@ -45,14 +45,15 @@ class UploadHandler(tornado.web.RequestHandler):
         data = self.request.body
         kind = filetype.guess(data)
         prefix = self.get_query_argument("prefix", default="")
-        if not (is_valid_nodeid(nodeid) and is_valid_prefix(prefix) and kind):
+        subfolder = self.get_query_argument("subfolder", default="")
+        if not (is_valid_nodeid(nodeid) and is_valid_name(prefix) and is_valid_name(subfolder) and kind):
             raise tornado.web.HTTPError(400)
 
         timestamp = datetime.today().strftime('%Y%m%d_%H%M%S')
         filename = "".join((prefix, timestamp, ".", kind.extension))
         y, m, d = datetime.today().strftime('%Y %m %d').split()
         filepath = normalize_path(os.path.normpath(os.path.join(
-            UPLOAD_DIR, nodeid, y, m, d, filename)))
+            UPLOAD_DIR, nodeid, subfolder, y, m, d, filename)))
         if not is_safe_path(UPLOAD_DIR, filepath):
             logging.error("UPLOAD_DIR=%s filepath=%s", UPLOAD_DIR, filepath)
             raise tornado.web.HTTPError(400)
@@ -82,5 +83,3 @@ if __name__ == "__main__":
     http_server = tornado.httpserver.HTTPServer(app)
     http_server.listen(options.port)
     tornado.ioloop.IOLoop.current().start()
-
-
