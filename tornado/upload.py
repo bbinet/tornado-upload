@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import mimetypes
 import os
 import logging
 import re
@@ -46,11 +47,12 @@ class UploadHandler(tornado.web.RequestHandler):
         kind = filetype.guess(data)
         prefix = self.get_query_argument("prefix", default="")
         subfolder = self.get_query_argument("subfolder", default="")
-        if not (is_valid_nodeid(nodeid) and is_valid_name(prefix) and is_valid_name(subfolder) and kind):
+        extension = kind.extension if kind else mimetypes.guess_extension(self.request.headers.get('content-type'))
+        if not (is_valid_nodeid(nodeid) and is_valid_name(prefix) and is_valid_name(subfolder) and extension):
             raise tornado.web.HTTPError(400)
 
         timestamp = datetime.today().strftime('%Y%m%d_%H%M%S')
-        filename = "".join((prefix, timestamp, ".", kind.extension))
+        filename = "".join((prefix, timestamp, extension))
         y, m, d = datetime.today().strftime('%Y %m %d').split()
         filepath = normalize_path(os.path.normpath(os.path.join(
             UPLOAD_DIR, nodeid, subfolder, y, m, d, filename)))
