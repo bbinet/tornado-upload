@@ -55,7 +55,7 @@ class UploadHandler(tornado.web.RequestHandler):
         filename = "".join((prefix, timestamp, extension))
         y, m, d = datetime.today().strftime('%Y %m %d').split()
         filepath = normalize_path(os.path.normpath(os.path.join(
-            UPLOAD_DIR, nodeid, subfolder, y, m, d, filename)))
+            UPLOAD_DIR, subfolder, nodeid, y, m, d, filename)))
         if not is_safe_path(UPLOAD_DIR, filepath):
             logging.error("UPLOAD_DIR=%s filepath=%s", UPLOAD_DIR, filepath)
             raise tornado.web.HTTPError(400)
