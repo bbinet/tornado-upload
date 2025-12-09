@@ -15,11 +15,13 @@ import filetype
 define("port", default=8080, help="run on the given port", type=int)
 
 UPLOAD_DIR = os.path.join(os.getcwd(), "uploaded")
-logging.info("UPLOAD_DIR={}".format(UPLOAD_DIR))
+PUBLIC_UPLOAD_DIR = os.path.join(UPLOAD_DIR, "public")
+logging.info("UPLOAD_DIR={}, PUBLIC_UPLOAD_DIR={}".format(UPLOAD_DIR, PUBLIC_UPLOAD_DIR))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(PUBLIC_UPLOAD_DIR, exist_ok=True)
 
 def normalize_path(path: str) -> str:
-    return re.sub(r"[^A-Za-z0-9_./-]", "", 
+    return re.sub(r"[^A-Za-z0-9_./-]", "",
             unicodedata.normalize("NFKD", path)
                 .encode("ascii", "ignore").decode("ascii")
             ).strip("._")
@@ -40,6 +42,18 @@ def is_safe_path(basedir, path, follow_symlinks=True):
         matchpath = os.path.abspath(path)
     return basedir == os.path.commonpath((basedir, matchpath))
 
+def write_safe_path(basedir, filepath, data):
+    if not is_safe_path(basedir, filepath):
+        logging.error("Unsafe path: %s \non basedir: %s", filepath, basedir)
+        raise tornado.web.HTTPError(400)
+    try:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, "wb") as f:
+            f.write(data)
+    except OSError as e:
+        logging.error("Failed to write file due to OSError %s", str(e))
+        raise
+
 class UploadHandler(tornado.web.RequestHandler):
     def post(self):
         nodeid = self.get_argument("nodeid", default="")
@@ -50,30 +64,31 @@ class UploadHandler(tornado.web.RequestHandler):
         extension = kind.extension if kind else mimetypes.guess_extension(self.request.headers.get('content-type'))
         if not (is_valid_nodeid(nodeid) and is_valid_name(prefix) and is_valid_name(subfolder) and extension):
             raise tornado.web.HTTPError(400)
-
         timestamp = datetime.today().strftime('%Y%m%d_%H%M%S')
         filename = "".join((prefix, timestamp, extension))
         y, m, d = datetime.today().strftime('%Y %m %d').split()
         filepath = normalize_path(os.path.normpath(os.path.join(
             UPLOAD_DIR, nodeid, subfolder, y, m, d, filename)))
-        if not is_safe_path(UPLOAD_DIR, filepath):
-            logging.error("UPLOAD_DIR=%s filepath=%s", UPLOAD_DIR, filepath)
-            raise tornado.web.HTTPError(400)
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        try:
-            with open(filepath, "wb") as f:
-                f.write(data)
-            logging.info("{} uploaded {}, saved as {}".format(self.request.remote_ip, filename, filepath))
-            self.write({"result": "upload OK"})
-        except OSError as e:
-            logging.error("Failed to write file due to OSError %s", str(e))
-            self.write({"result": "upload FAIL"})
-            raise
+        write_safe_path(UPLOAD_DIR, filepath, data)
+        logging.info("{} uploaded {}, saved as {}".format(self.request.remote_ip, filename, filepath))
+        self.write({"result": "upload OK"})
+
+class PublicUploadHandler(tornado.web.RequestHandler):
+    def post(self):
+        data = self.request.body
+        filepath = self.get_query_argument("filepath", default="")
+        if not filepath:
+            raise tornado.web.HTTPError(400, "Valid filepath required")
+        filepath = normalize_path(os.path.normpath(os.path.join(PUBLIC_UPLOAD_DIR, *filepath.split("/"))))
+        write_safe_path(PUBLIC_UPLOAD_DIR, filepath, data)
+        logging.info("{} saved as {}".format(self.request.remote_ip, filepath))
+        self.write({"result": "upload OK"})
 
 def make_app():
     return tornado.web.Application(
         handlers=[
             (r"/", UploadHandler),
+            (r"/public", PublicUploadHandler),
         ],
         template_path=os.path.join(os.getcwd(), "templates"),
         #debug=True,
